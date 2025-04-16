@@ -5,58 +5,87 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>상환 스케줄표 자동 생성기</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f8f8f8;
+            padding: 20px;
+        }
+        .calculator {
+            display: inline-block;
+            text-align: left;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        table {
+            margin: 20px auto;
+            border-collapse: collapse;
+            width: 90%;
+        }
+        table, th, td {
+            border: 1px solid #ccc;
+        }
+        th, td {
+            padding: 8px;
+            text-align: center;
+        }
+    </style>
 </head>
 <body>
-<h1>상환 스케줄표 자동 생성기</h1>
-<p>대출 금액, 이자율, 기간을 입력 후 상환 방식을 선택하면 상환 스케줄표가 자동으로 생성됩니다.</p>
+    <h1>상환 스케줄표 자동 생성기</h1>
+    <div class="calculator">
+        <p>대출 금액, 이자율, 기간을 입력 후 상환 방식을 선택하면 상환 스케줄표가 자동으로 생성됩니다.</p>
+        <label>대출 금액: <input type="number" id="amount"></label><br><br>
+        <label>연 이자율(%): <input type="number" id="rate"></label><br><br>
+        <label>대출 기간(년): <input type="number" id="years"></label><br><br>
+        <label>상환 방식: 
+            <select id="method">
+                <option value="equalPrincipalAndInterest">원리금 균등상환</option>
+                <option value="equalPrincipal">원금 균등상환</option>
+            </select>
+        </label><br><br>
+        <button onclick="generateSchedule()">스케줄표 생성</button>
+    </div>
+    <div id="schedule"></div>
 
-<div>
-    대출 금액: <input type="number" id="amount"><br>
-    연 이자율(%): <input type="number" id="rate"><br>
-    대출 기간(년): <input type="number" id="years"><br>
-    <select id="method">
-        <option value="equalPrincipalAndInterest">원리금 균등상환</option>
-        <option value="equalPrincipal">원금 균등상환</option>
-    </select><br>
-    <button onclick="generateSchedule()">스케줄표 생성</button>
-</div>
-<div id="schedule" style="margin-top:20px;"></div>
-
-<script>
-function formatCurrencyKRW(num) {
-    return parseInt(num).toLocaleString('ko-KR') + ' 원';
-}
-
-function generateSchedule() {
-    const amount = parseFloat(document.getElementById('amount').value);
-    const rate = parseFloat(document.getElementById('rate').value) / 100 / 12;
-    const years = parseFloat(document.getElementById('years').value) * 12;
-    const method = document.getElementById('method').value;
-
-    let schedule = '<table border="1"><tr><th>월</th><th>원금</th><th>이자</th><th>납입금</th><th>잔여원금</th></tr>';
-    let balance = amount;
-
-    if (method === 'equalPrincipalAndInterest') {
-        const monthlyPayment = (amount * rate * Math.pow(1 + rate, years)) / (Math.pow(1 + rate, years) - 1);
-        for (let m = 1; m <= years; m++) {
-            const interestPayment = balance * rate;
-            const principalPayment = monthlyPayment - interestPayment;
-            balance -= principalPayment;
-            schedule += `<tr><td>${m}</td><td>${formatCurrencyKRW(principalPayment)}</td><td>${formatCurrencyKRW(interestPayment)}</td><td>${formatCurrencyKRW(monthlyPayment)}</td><td>${formatCurrencyKRW(balance)}</td></tr>`;
-        }
-    } else if (method === 'equalPrincipal') {
-        const principalPayment = amount / years;
-        for (let m = 1; m <= years; m++) {
-            const interestPayment = balance * rate;
-            const monthlyPayment = principalPayment + interestPayment;
-            balance -= principalPayment;
-            schedule += `<tr><td>${m}</td><td>${formatCurrencyKRW(principalPayment)}</td><td>${formatCurrencyKRW(interestPayment)}</td><td>${formatCurrencyKRW(monthlyPayment)}</td><td>${formatCurrencyKRW(balance)}</td></tr>`;
-        }
+    <script>
+    function formatCurrencyKRW(num) {
+        return parseInt(num).toLocaleString('ko-KR') + ' 원';
     }
 
-    schedule += '</table>';
-    document.getElementById('schedule').innerHTML = schedule;
-}
-</script>
+    function generateSchedule() {
+        const amount = parseFloat(document.getElementById('amount').value);
+        const rate = parseFloat(document.getElementById('rate').value) / 100 / 12;
+        const years = parseFloat(document.getElementById('years').value) * 12;
+        const method = document.getElementById('method').value;
+
+        let schedule = '<table><tr><th>월</th><th>원금</th><th>이자</th><th>납입금</th><th>잔여원금</th></tr>';
+        let balance = amount;
+
+        if (method === 'equalPrincipalAndInterest') {
+            const monthlyPayment = (amount * rate * Math.pow(1 + rate, years)) / (Math.pow(1 + rate, years) - 1);
+            for (let m = 1; m <= years; m++) {
+                const interestPayment = balance * rate;
+                const principalPayment = monthlyPayment - interestPayment;
+                balance -= principalPayment;
+                schedule += `<tr><td>${m}</td><td>${formatCurrencyKRW(principalPayment)}</td><td>${formatCurrencyKRW(interestPayment)}</td><td>${formatCurrencyKRW(monthlyPayment)}</td><td>${formatCurrencyKRW(balance)}</td></tr>`;
+            }
+        } else if (method === 'equalPrincipal') {
+            const principalPayment = amount / years;
+            for (let m = 1; m <= years; m++) {
+                const interestPayment = balance * rate;
+                const monthlyPayment = principalPayment + interestPayment;
+                balance -= principalPayment;
+                schedule += `<tr><td>${m}</td><td>${formatCurrencyKRW(principalPayment)}</td><td>${formatCurrencyKRW(interestPayment)}</td><td>${formatCurrencyKRW(monthlyPayment)}</td><td>${formatCurrencyKRW(balance)}</td></tr>`;
+            }
+        }
+
+        schedule += '</table>';
+        document.getElementById('schedule').innerHTML = schedule;
+    }
+    </script>
 </body>
 </html>
