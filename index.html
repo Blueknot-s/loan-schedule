@@ -2,9 +2,9 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>상환 스케줄표 자동 생성기</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>통합 대출 계산기 | 이자 계산 + 상환 스케줄표 자동 생성</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -20,72 +20,107 @@
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
-        table {
-            margin: 20px auto;
-            border-collapse: collapse;
-            width: 90%;
+        .result-box {
+            margin-top: 20px;
+            display: inline-block;
+            text-align: left;
+            background: #eef;
+            padding: 15px;
+            border-radius: 5px;
         }
-        table, th, td {
-            border: 1px solid #ccc;
+        table {
+            margin-top: 20px;
+            border-collapse: collapse;
+            width: 100%;
         }
         th, td {
+            border: 1px solid #ccc;
             padding: 8px;
             text-align: center;
+        }
+        th {
+            background-color: #f0f0f0;
         }
     </style>
 </head>
 <body>
-    <h1>상환 스케줄표 자동 생성기</h1>
-    <div class="calculator">
-        <p>대출 금액, 이자율, 기간을 입력 후 상환 방식을 선택하면 상환 스케줄표가 자동으로 생성됩니다.</p>
-        <label>대출 금액: <input type="number" id="amount"></label><br><br>
-        <label>연 이자율(%): <input type="number" id="rate"></label><br><br>
-        <label>대출 기간(년): <input type="number" id="years"></label><br><br>
-        <label>상환 방식: 
-            <select id="method">
-                <option value="equalPrincipalAndInterest">원리금 균등상환</option>
-                <option value="equalPrincipal">원금 균등상환</option>
-            </select>
-        </label><br><br>
-        <button onclick="generateSchedule()">스케줄표 생성</button>
-    </div>
-    <div id="schedule"></div>
+<h1>통합 대출 계산기</h1>
+<p>대출 이자 계산과 월별 상환 스케줄표를 한 번에 확인하세요.</p>
 
-    <script>
-    function formatCurrencyKRW(num) {
-        return parseInt(num).toLocaleString('ko-KR') + ' 원';
-    }
+<div class="calculator">
+    <label>대출 금액: <input type="number" id="principal"></label><br><br>
+    <label>연 이자율(%): <input type="number" id="rate"></label><br><br>
+    <label>대출 기간(년): <input type="number" id="years"></label><br><br>
+    <label>상환 방식: 
+        <select id="method">
+            <option value="equalPrincipalAndInterest">원리금 균등상환</option>
+            <option value="equalPrincipal">원금 균등상환</option>
+            <option value="bulletRepayment">만기일시상환</option>
+        </select>
+    </label><br><br>
+    <button onclick="calculateLoan()">계산하기</button>
+</div>
 
-    function generateSchedule() {
-        const amount = parseFloat(document.getElementById('amount').value);
-        const rate = parseFloat(document.getElementById('rate').value) / 100 / 12;
-        const years = parseFloat(document.getElementById('years').value) * 12;
-        const method = document.getElementById('method').value;
+<div id="summaryResult" class="result-box"></div>
+<div id="scheduleTable"></div>
 
-        let schedule = '<table><tr><th>월</th><th>원금</th><th>이자</th><th>납입금</th><th>잔여원금</th></tr>';
-        let balance = amount;
+<script>
+function formatCurrency(num) {
+    return parseInt(num).toLocaleString('ko-KR') + ' 원';
+}
 
-        if (method === 'equalPrincipalAndInterest') {
-            const monthlyPayment = (amount * rate * Math.pow(1 + rate, years)) / (Math.pow(1 + rate, years) - 1);
-            for (let m = 1; m <= years; m++) {
-                const interestPayment = balance * rate;
-                const principalPayment = monthlyPayment - interestPayment;
-                balance -= principalPayment;
-                schedule += `<tr><td>${m}</td><td>${formatCurrencyKRW(principalPayment)}</td><td>${formatCurrencyKRW(interestPayment)}</td><td>${formatCurrencyKRW(monthlyPayment)}</td><td>${formatCurrencyKRW(balance)}</td></tr>`;
-            }
-        } else if (method === 'equalPrincipal') {
-            const principalPayment = amount / years;
-            for (let m = 1; m <= years; m++) {
-                const interestPayment = balance * rate;
-                const monthlyPayment = principalPayment + interestPayment;
-                balance -= principalPayment;
-                schedule += `<tr><td>${m}</td><td>${formatCurrencyKRW(principalPayment)}</td><td>${formatCurrencyKRW(interestPayment)}</td><td>${formatCurrencyKRW(monthlyPayment)}</td><td>${formatCurrencyKRW(balance)}</td></tr>`;
-            }
+function calculateLoan() {
+    const p = parseFloat(document.getElementById('principal').value);
+    const r = parseFloat(document.getElementById('rate').value) / 100 / 12;
+    const n = parseFloat(document.getElementById('years').value) * 12;
+    const method = document.getElementById('method').value;
+
+    let summaryText = '';
+    let schedule = '';
+
+    if (method === 'equalPrincipalAndInterest') {
+        const monthly = (p * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+        const totalPayment = monthly * n;
+        const interest = totalPayment - p;
+        summaryText = `월 납입금: ${formatCurrency(monthly)}<br>총 이자: ${formatCurrency(interest)}<br>총 상환금액: ${formatCurrency(totalPayment)}`;
+
+        let balance = p;
+        schedule = '<table><tr><th>월</th><th>원금</th><th>이자</th><th>납입금</th><th>잔여원금</th></tr>';
+        for (let m = 1; m <= n; m++) {
+            const interestPayment = balance * r;
+            const principalPayment = monthly - interestPayment;
+            balance -= principalPayment;
+            schedule += `<tr><td>${m}</td><td>${formatCurrency(principalPayment)}</td><td>${formatCurrency(interestPayment)}</td><td>${formatCurrency(monthly)}</td><td>${formatCurrency(balance)}</td></tr>`;
         }
-
         schedule += '</table>';
-        document.getElementById('schedule').innerHTML = schedule;
+    } else if (method === 'equalPrincipal') {
+        const principalPayment = p / n;
+        const firstMonthInterest = p * r;
+        const firstMonthPayment = principalPayment + firstMonthInterest;
+        const lastMonthPayment = principalPayment + (principalPayment * r);
+        const totalInterest = ((p * r + principalPayment * r) / 2) * n;
+        const totalPayment = p + totalInterest;
+        summaryText = `첫 달 납입금: ${formatCurrency(firstMonthPayment)}<br>마지막 달 납입금: ${formatCurrency(lastMonthPayment)}<br>총 이자: ${formatCurrency(totalInterest)}<br>총 상환금액: ${formatCurrency(totalPayment)}`;
+
+        let balance = p;
+        schedule = '<table><tr><th>월</th><th>원금</th><th>이자</th><th>납입금</th><th>잔여원금</th></tr>';
+        for (let m = 1; m <= n; m++) {
+            const interestPayment = balance * r;
+            const monthlyPayment = principalPayment + interestPayment;
+            balance -= principalPayment;
+            schedule += `<tr><td>${m}</td><td>${formatCurrency(principalPayment)}</td><td>${formatCurrency(interestPayment)}</td><td>${formatCurrency(monthlyPayment)}</td><td>${formatCurrency(balance)}</td></tr>`;
+        }
+        schedule += '</table>';
+    } else if (method === 'bulletRepayment') {
+        const totalInterest = p * r * n;
+        const totalPayment = p + totalInterest;
+        summaryText = `매달 이자납부: ${formatCurrency(p * r)}<br>만기 원금상환: ${formatCurrency(p)}<br>총 이자: ${formatCurrency(totalInterest)}<br>총 상환금액: ${formatCurrency(totalPayment)}`;
+        schedule = '';
     }
-    </script>
+
+    document.getElementById('summaryResult').innerHTML = summaryText;
+    document.getElementById('scheduleTable').innerHTML = schedule;
+}
+</script>
 </body>
 </html>
